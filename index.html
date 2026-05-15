@@ -233,10 +233,10 @@
 
   /* ── CANDLE CHART ── */
   .chart-wrap {
-    position: absolute; right: -4%; top: 0; bottom: 0; width: 58%;
+    position: absolute; right: 0; top: 0; bottom: 0; width: 62%;
     overflow: hidden; pointer-events: none;
-    mask-image: linear-gradient(to left, rgba(0,0,0,0.55) 0%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.55) 0%, transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0%, black 20%, black 80%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 20%, black 80%, transparent 100%);
   }
   #candleCanvas { display: block; width: 100%; height: 100%; }
 
@@ -294,95 +294,120 @@
   window.addEventListener('resize', () => { resize(); draw(); });
   resize();
 
-  // Generate realistic NQ-like candle data
-  function genCandles(n) {
+  function genCandles(n, startPrice) {
     const candles = [];
-    let price = 19800;
+    let price = startPrice || 19800;
     for (let i = 0; i < n; i++) {
-      const move   = (Math.random() - 0.48) * 80;
+      const trend  = Math.sin(i * 0.18) * 30;
+      const move   = trend + (Math.random() - 0.48) * 60;
       const open   = price;
       const close  = price + move;
-      const high   = Math.max(open, close) + Math.random() * 40;
-      const low    = Math.min(open, close) - Math.random() * 40;
+      const wick   = Math.random() * 30 + 8;
+      const high   = Math.max(open, close) + wick;
+      const low    = Math.min(open, close) - wick;
       candles.push({ open, close, high, low });
       price = close;
     }
     return candles;
   }
 
-  let candles = genCandles(60);
+  const VISIBLE = 38;
+  let candles = genCandles(120);
   let offset  = 0;
+  let targetMin, targetMax, currentMin, currentMax;
 
   function draw() {
     const W = canvas.offsetWidth;
     const H = canvas.offsetHeight;
     ctx.clearRect(0, 0, W, H);
 
-    const visible = candles.slice(Math.floor(offset), Math.floor(offset) + 50);
-    if (!visible.length) return;
+    // fractional offset for smooth scrolling
+    const start = offset;
+    const end   = start + VISIBLE;
+    const iStart = Math.floor(start);
+    const iEnd   = Math.ceil(end);
+    const visible = candles.slice(iStart, iEnd + 1);
+    if (visible.length < 2) return;
 
+    // smooth min/max
     const prices = visible.flatMap(c => [c.high, c.low]);
-    const minP   = Math.min(...prices);
-    const maxP   = Math.max(...prices);
-    const range  = maxP - minP || 1;
-    const pad    = H * 0.1;
+    const rawMin = Math.min(...prices);
+    const rawMax = Math.max(...prices);
+    if (targetMin === undefined) { targetMin = rawMin; currentMin = rawMin; }
+    if (targetMax === undefined) { targetMax = rawMax; currentMax = rawMax; }
+    targetMin = rawMin;
+    targetMax = rawMax;
+    currentMin += (targetMin - currentMin) * 0.03;
+    currentMax += (targetMax - currentMax) * 0.03;
 
-    const cw   = W / visible.length;
-    const body  = cw * 0.55;
+    const range = currentMax - currentMin || 1;
+    const pad   = H * 0.12;
+    const cw    = W / VISIBLE;
+    const body  = Math.max(cw * 0.5, 4);
+    const frac  = start - Math.floor(start);
 
-    // subtle grid lines
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    // subtle grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.035)';
     ctx.lineWidth = 1;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i <= 4; i++) {
       const y = pad + (H - pad * 2) * (i / 4);
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
     }
 
     visible.forEach((c, i) => {
-      const x     = i * cw + cw / 2;
-      const yHigh = pad + ((maxP - c.high) / range) * (H - pad * 2);
-      const yLow  = pad + ((maxP - c.low)  / range) * (H - pad * 2);
-      const yOpen = pad + ((maxP - c.open) / range) * (H - pad * 2);
-      const yClose= pad + ((maxP - c.close)/ range) * (H - pad * 2);
-      const bull  = c.close >= c.open;
-      const color = bull ? 'rgba(0,255,136,0.95)' : 'rgba(255,59,59,0.95)';
+      const xRaw = (i - frac) * cw + cw / 2;
+      const x    = xRaw;
+      if (x < -cw || x > W + cw) return;
 
-      // wick
+      // fade in at right edge, fade out at left
+      const relPos = x / W;
+      const alpha  = Math.min(1, relPos * 3) * Math.min(1, (1 - relPos) * 8);
+
+      const yHigh  = pad + ((currentMax - c.high)  / range) * (H - pad * 2);
+      const yLow   = pad + ((currentMax - c.low)   / range) * (H - pad * 2);
+      const yOpen  = pad + ((currentMax - c.open)  / range) * (H - pad * 2);
+      const yClose = pad + ((currentMax - c.close) / range) * (H - pad * 2);
+      const bull   = c.close >= c.open;
+
+      const greenA = `rgba(0,255,136,${(0.9 * alpha).toFixed(2)})`;
+      const redA   = `rgba(255,59,59,${(0.9 * alpha).toFixed(2)})`;
+      const color  = bull ? greenA : redA;
+
       ctx.strokeStyle = color;
-      ctx.lineWidth = 1;
+      ctx.lineWidth   = 1.2;
       ctx.beginPath();
       ctx.moveTo(x, yHigh);
       ctx.lineTo(x, yLow);
       ctx.stroke();
 
-      // body
-      ctx.fillStyle = bull ? 'rgba(0,255,136,0.8)' : 'rgba(255,59,59,0.8)';
+      ctx.fillStyle = bull
+        ? `rgba(0,255,136,${(0.75 * alpha).toFixed(2)})`
+        : `rgba(255,59,59,${(0.75 * alpha).toFixed(2)})`;
       const bodyTop = Math.min(yOpen, yClose);
-      const bodyH   = Math.max(Math.abs(yClose - yOpen), 1);
+      const bodyH   = Math.max(Math.abs(yClose - yOpen), 1.5);
       ctx.fillRect(x - body / 2, bodyTop, body, bodyH);
     });
 
-    // price line
-    const last  = visible[visible.length - 1];
-    const lastY = pad + ((maxP - last.close) / range) * (H - pad * 2);
-    ctx.strokeStyle = 'rgba(245,158,11,0.4)';
+    // price line on most recent visible candle
+    const last  = visible[Math.min(visible.length - 1, VISIBLE - 1)];
+    const lastY = pad + ((currentMax - last.close) / range) * (H - pad * 2);
+    ctx.strokeStyle = 'rgba(245,158,11,0.45)';
     ctx.lineWidth = 1;
-    ctx.setLineDash([4, 4]);
-    ctx.beginPath(); ctx.moveTo(0, lastY); ctx.lineTo(W, lastY); ctx.stroke();
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath(); ctx.moveTo(0, lastY); ctx.lineTo(W * 0.88, lastY); ctx.stroke();
     ctx.setLineDash([]);
 
     // price label
-    ctx.fillStyle = 'rgba(245,158,11,0.8)';
+    ctx.fillStyle = 'rgba(245,158,11,0.9)';
     ctx.font = '600 11px Space Grotesk, sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText(last.close.toFixed(0), W - 6, lastY - 4);
+    ctx.fillText(last.close.toFixed(0), W * 0.88 - 4, lastY - 4);
   }
 
-  // Slowly scroll candles
   function tick() {
-    offset += 0.015;
-    if (offset + 50 >= candles.length) {
-      candles = candles.concat(genCandles(20));
+    offset += 0.008;
+    if (offset + VISIBLE + 5 >= candles.length) {
+      candles = candles.concat(genCandles(40, candles[candles.length - 1].close));
     }
     draw();
     requestAnimationFrame(tick);
