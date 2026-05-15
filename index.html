@@ -441,7 +441,7 @@
 
     <div class="discord-input-wrap" id="discordInputWrap">
       <span style="color:#72767d; font-size:1.1rem;">+</span>
-      <input class="discord-input" id="demoInput" placeholder="Try out Macro Bot's commands! Type / to see all commands..." maxlength="30" autocomplete="off">
+      <input class="discord-input" id="demoInput" placeholder="Type / to see all commands..." maxlength="30" autocomplete="off">
       <button class="discord-send" id="demoSend" title="Send">➤</button>
     </div>
   </div>
@@ -618,6 +618,23 @@
       <div class="embed-footer">Requested by You</div>
       <div class="embed-demo-note">⚠️ Demo data — not live. <a href="#pricing">Upgrade for real-time accuracy →</a></div>`,
   };
+
+  // Initial bot welcome message
+  (function() {
+    const botMsg = document.createElement('div');
+    botMsg.className = 'msg';
+    botMsg.innerHTML = `
+      <div class="msg-avatar avatar-bot-img"><img src="bot-avatar.jpg" alt="bot" style="width:36px;height:36px;border-radius:50%;object-fit:cover;"></div>
+      <div class="msg-body">
+        <div class="msg-header">
+          <span class="msg-name bot-name">Snipers Macro Bot</span>
+          <span class="msg-tag">BOT</span>
+          <span class="msg-time">Today at ${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</span>
+        </div>
+        <div class="msg-text" style="color:#b9bbbe;">👋 Try out my commands! Type <span class="slash">/</span> to see everything available.</div>
+      </div>`;
+    document.getElementById('demoMsgs').appendChild(botMsg);
+  })();
 
   let popupShown = false;
   let busy = false;
