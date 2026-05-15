@@ -233,10 +233,10 @@
 
   /* ── CANDLE CHART ── */
   .chart-wrap {
-    position: absolute; right: 0; top: 0; bottom: 0; width: 52%;
+    position: absolute; right: -4%; top: 0; bottom: 0; width: 58%;
     overflow: hidden; pointer-events: none;
-    mask-image: linear-gradient(to left, rgba(0,0,0,0.18) 0%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.18) 0%, transparent 100%);
+    mask-image: linear-gradient(to left, rgba(0,0,0,0.55) 0%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.55) 0%, transparent 100%);
   }
   #candleCanvas { display: block; width: 100%; height: 100%; }
 
@@ -345,7 +345,7 @@
       const yOpen = pad + ((maxP - c.open) / range) * (H - pad * 2);
       const yClose= pad + ((maxP - c.close)/ range) * (H - pad * 2);
       const bull  = c.close >= c.open;
-      const color = bull ? 'rgba(0,255,136,0.75)' : 'rgba(255,59,59,0.75)';
+      const color = bull ? 'rgba(0,255,136,0.95)' : 'rgba(255,59,59,0.95)';
 
       // wick
       ctx.strokeStyle = color;
@@ -356,7 +356,7 @@
       ctx.stroke();
 
       // body
-      ctx.fillStyle = bull ? 'rgba(0,255,136,0.55)' : 'rgba(255,59,59,0.55)';
+      ctx.fillStyle = bull ? 'rgba(0,255,136,0.8)' : 'rgba(255,59,59,0.8)';
       const bodyTop = Math.min(yOpen, yClose);
       const bodyH   = Math.max(Math.abs(yClose - yOpen), 1);
       ctx.fillRect(x - body / 2, bodyTop, body, bodyH);
