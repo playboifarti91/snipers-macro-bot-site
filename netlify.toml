@@ -1,0 +1,24 @@
+[[redirects]]
+  from = "/start-basic"
+  to = "/start-basic.html"
+  status = 200
+
+[[redirects]]
+  from = "/start-premium"
+  to = "/start-premium.html"
+  status = 200
+
+[[redirects]]
+  from = "/start-elite"
+  to = "/start-elite.html"
+  status = 200
+
+[[redirects]]
+  from = "/start-lifetime"
+  to = "/start-lifetime.html"
+  status = 200
+
+[[redirects]]
+  from = "/start"
+  to = "/start.html"
+  status = 200
