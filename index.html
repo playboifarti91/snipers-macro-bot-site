@@ -231,6 +231,15 @@
   }
   .popup-close:hover { color: var(--text); }
 
+  /* ── CANDLE CHART ── */
+  .chart-wrap {
+    position: absolute; right: 0; top: 0; bottom: 0; width: 52%;
+    overflow: hidden; pointer-events: none;
+    mask-image: linear-gradient(to left, rgba(0,0,0,0.18) 0%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.18) 0%, transparent 100%);
+  }
+  #candleCanvas { display: block; width: 100%; height: 100%; }
+
   @media (max-width: 768px) {
     .nav-links { display: none; }
     .hero { padding: 7rem 2rem 3rem; }
@@ -256,6 +265,11 @@
 </nav>
 
 <div class="hero">
+  <!-- Candle chart background -->
+  <div class="chart-wrap">
+    <canvas id="candleCanvas"></canvas>
+  </div>
+
   <div class="hero-live"><span class="dot"></span><span class="live-text">Live on Discord — Posts daily at 8:45 AM ET</span></div>
   <h1>The <span class="gold">pre-market edge</span><br>your server <span class="dim">needs</span></h1>
   <p class="hero-sub">Automated NQ futures briefs, live macro data, and real GEX levels — every trading day before the open.</p>
@@ -265,6 +279,119 @@
     <a href="#pricing" class="btn-sec">View plans →</a>
   </div>
 </div>
+
+<script>
+(function() {
+  const canvas = document.getElementById('candleCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  function resize() {
+    canvas.width  = canvas.offsetWidth  * window.devicePixelRatio;
+    canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  }
+  window.addEventListener('resize', () => { resize(); draw(); });
+  resize();
+
+  // Generate realistic NQ-like candle data
+  function genCandles(n) {
+    const candles = [];
+    let price = 19800;
+    for (let i = 0; i < n; i++) {
+      const move   = (Math.random() - 0.48) * 80;
+      const open   = price;
+      const close  = price + move;
+      const high   = Math.max(open, close) + Math.random() * 40;
+      const low    = Math.min(open, close) - Math.random() * 40;
+      candles.push({ open, close, high, low });
+      price = close;
+    }
+    return candles;
+  }
+
+  let candles = genCandles(60);
+  let offset  = 0;
+
+  function draw() {
+    const W = canvas.offsetWidth;
+    const H = canvas.offsetHeight;
+    ctx.clearRect(0, 0, W, H);
+
+    const visible = candles.slice(Math.floor(offset), Math.floor(offset) + 50);
+    if (!visible.length) return;
+
+    const prices = visible.flatMap(c => [c.high, c.low]);
+    const minP   = Math.min(...prices);
+    const maxP   = Math.max(...prices);
+    const range  = maxP - minP || 1;
+    const pad    = H * 0.1;
+
+    const cw   = W / visible.length;
+    const body  = cw * 0.55;
+
+    // subtle grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 5; i++) {
+      const y = pad + (H - pad * 2) * (i / 4);
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    visible.forEach((c, i) => {
+      const x     = i * cw + cw / 2;
+      const yHigh = pad + ((maxP - c.high) / range) * (H - pad * 2);
+      const yLow  = pad + ((maxP - c.low)  / range) * (H - pad * 2);
+      const yOpen = pad + ((maxP - c.open) / range) * (H - pad * 2);
+      const yClose= pad + ((maxP - c.close)/ range) * (H - pad * 2);
+      const bull  = c.close >= c.open;
+      const color = bull ? 'rgba(0,255,136,0.75)' : 'rgba(255,59,59,0.75)';
+
+      // wick
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, yHigh);
+      ctx.lineTo(x, yLow);
+      ctx.stroke();
+
+      // body
+      ctx.fillStyle = bull ? 'rgba(0,255,136,0.55)' : 'rgba(255,59,59,0.55)';
+      const bodyTop = Math.min(yOpen, yClose);
+      const bodyH   = Math.max(Math.abs(yClose - yOpen), 1);
+      ctx.fillRect(x - body / 2, bodyTop, body, bodyH);
+    });
+
+    // price line
+    const last  = visible[visible.length - 1];
+    const lastY = pad + ((maxP - last.close) / range) * (H - pad * 2);
+    ctx.strokeStyle = 'rgba(245,158,11,0.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(0, lastY); ctx.lineTo(W, lastY); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // price label
+    ctx.fillStyle = 'rgba(245,158,11,0.8)';
+    ctx.font = '600 11px Space Grotesk, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(last.close.toFixed(0), W - 6, lastY - 4);
+  }
+
+  // Slowly scroll candles
+  function tick() {
+    offset += 0.015;
+    if (offset + 50 >= candles.length) {
+      candles = candles.concat(genCandles(20));
+    }
+    draw();
+    requestAnimationFrame(tick);
+  }
+
+  draw();
+  tick();
+})();
+</script>
 
 <div class="ticker">
   <div class="ticker-inner">
